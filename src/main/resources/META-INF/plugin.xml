@@ -1,0 +1,184 @@
+<idea-plugin>
+    <id>io.cyberstrike.ide.jetbrains</id>
+    <name>CyberStrike UI</name>
+    <version>1.0.0</version>
+    <vendor url="https://cyberstrike.io">CyberStrike</vendor>
+
+    <description><![CDATA[
+      <p><b>CyberStrike UI</b> — the open-source AI agent for offensive security,
+      inside your JetBrains IDE.</p>
+      <p>This plugin docks the CyberStrike TUI next to your code and adds the IDE
+      features a pentest workflow needs:</p>
+      <ul>
+        <li><b>CyberStrike panel</b> — the real TUI in a docked tool window
+            (<code>Ctrl+\</code>), so the editor stays visible while the agent
+            works ("files | code | agent").</li>
+        <li><b>Findings tab</b> — every vulnerability the agents recorded, colour
+            coded by severity, with status, CWE, endpoint and file location.
+            Double-click opens the affected file; right-click verifies the
+            finding with the agent or copies a Markdown write-up.</li>
+        <li><b>Native diff viewer</b> with Accept / Reject for every file the
+            agent changed.</li>
+        <li><b>Send code as context</b> with <code>Ctrl+Alt+K</code> — inserts
+            <code>@path</code> / <code>@path#Lx-y</code> into the TUI.</li>
+        <li><b>Security actions</b> in the editor context menu: OWASP security
+            review, find vulnerabilities, write a proof of concept.</li>
+        <li><b>Status bar indicator</b> with live finding counts and a spinner
+            while a turn runs.</li>
+        <li><b>Quick commands</b>: new session, stop, HackBrowser, report,
+            attack surface (<code>/web</code>), review diffs, copy output.</li>
+        <li><b>Settings</b> (Settings &gt; Tools &gt; CyberStrike): server URL,
+            password, CLI path, attach mode, auto-connect, diff behaviour and
+            terminal scrollback.</li>
+      </ul>
+      <p>Connects to a CyberStrike server (<code>cyberstrike web</code>, default
+      <code>http://127.0.0.1:4096</code>). Local requests are trusted by the
+      server; a password is only needed for remote / tunneled servers.</p>
+    ]]></description>
+
+    <change-notes><![CDATA[
+      <p>1.0.0 — First CyberStrike UI release.</p>
+      <ul>
+        <li>Docked CyberStrike TUI panel with ESC-to-interrupt and drag &amp; drop
+            <code>@path</code> references.</li>
+        <li>Findings tab (severity, status, CWE, location) with verify-with-agent
+            and Markdown copy actions.</li>
+        <li>Native multi-file diff viewer with Accept / Reject.</li>
+        <li>Status bar widget with finding counts and a running-turn spinner.</li>
+        <li>Security-focused editor actions and one-click HackBrowser / report /
+            attack-surface commands.</li>
+        <li>Automatic server discovery, reconnect and optional
+            <code>cyberstrike serve</code> start.</li>
+      </ul>
+    ]]></change-notes>
+
+    <idea-version since-build="242"/>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>org.jetbrains.plugins.terminal</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <projectService serviceImplementation="io.cyberstrike.ide.jetbrains.service.CyberStrikeService"/>
+        <projectService serviceImplementation="io.cyberstrike.ide.jetbrains.session.SessionManager"/>
+        <projectService serviceImplementation="io.cyberstrike.ide.jetbrains.diff.DiffHandler"/>
+
+        <toolWindow id="CyberStrike"
+                    anchor="right"
+                    icon="/icons/cyberstrike.svg"
+                    factoryClass="io.cyberstrike.ide.jetbrains.ui.CyberStrikeToolWindowFactory"/>
+
+        <notificationGroup id="CyberStrike" displayType="BALLOON"/>
+
+        <statusBarWidgetFactory id="CyberStrikeStatusBar"
+                                implementation="io.cyberstrike.ide.jetbrains.ui.CyberStrikeStatusBarWidgetFactory"/>
+
+        <postStartupActivity implementation="io.cyberstrike.ide.jetbrains.ui.CyberStrikeStartupActivity"/>
+
+        <projectConfigurable instance="io.cyberstrike.ide.jetbrains.ui.CyberStrikeSettingsConfigurable"
+                            displayName="CyberStrike"
+                            id="io.cyberstrike.ide.jetbrains.settings"
+                            parentId="tools"/>
+    </extensions>
+
+    <actions>
+        <action id="CyberStrike.QuickLaunch"
+                class="io.cyberstrike.ide.jetbrains.actions.QuickLaunchAction"
+                text="Open CyberStrike"
+                description="Open or focus the CyberStrike panel"
+                icon="/icons/cyberstrike.svg">
+            <keyboard-shortcut keymap="$default" first-keystroke="control BACK_SLASH"/>
+            <keyboard-shortcut keymap="Mac OS X" first-keystroke="meta ESCAPE"/>
+            <keyboard-shortcut keymap="Mac OS X 10.5+" first-keystroke="meta ESCAPE"/>
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+
+        <action id="CyberStrike.AddLines"
+                class="io.cyberstrike.ide.jetbrains.actions.SendSelectionToTerminalAction"
+                text="Add lines to CyberStrike"
+                icon="/icons/cyberstrike.svg">
+            <keyboard-shortcut keymap="$default" first-keystroke="control alt K"/>
+            <keyboard-shortcut keymap="Mac OS X" first-keystroke="alt meta K"/>
+            <keyboard-shortcut keymap="Mac OS X 10.5+" first-keystroke="alt meta K"/>
+            <add-to-group group-id="EditorPopupMenu" anchor="first"/>
+        </action>
+
+        <action id="CyberStrike.AddFile"
+                class="io.cyberstrike.ide.jetbrains.actions.SendSelectionToTerminalAction"
+                text="Add to CyberStrike"
+                icon="/icons/cyberstrike.svg">
+            <keyboard-shortcut keymap="$default" first-keystroke="control alt K"/>
+            <keyboard-shortcut keymap="Mac OS X" first-keystroke="alt meta K"/>
+            <keyboard-shortcut keymap="Mac OS X 10.5+" first-keystroke="alt meta K"/>
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="first"/>
+        </action>
+
+        <action id="CyberStrike.NewSession"
+                class="io.cyberstrike.ide.jetbrains.actions.NewSessionAction"
+                text="CyberStrike: New Session"
+                description="Start a fresh CyberStrike session">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+
+        <action id="CyberStrike.Interrupt"
+                class="io.cyberstrike.ide.jetbrains.actions.InterruptAction"
+                text="CyberStrike: Stop"
+                description="Abort the current CyberStrike turn"/>
+
+        <action id="CyberStrike.Findings"
+                class="io.cyberstrike.ide.jetbrains.actions.OpenFindingsAction"
+                text="CyberStrike: Findings"
+                description="Show the findings recorded in this session">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+
+        <action id="CyberStrike.OpenDiffs"
+                class="io.cyberstrike.ide.jetbrains.actions.OpenDiffsAction"
+                text="CyberStrike: Review Diffs"
+                description="Show the diff of the last CyberStrike turn">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+
+        <action id="CyberStrike.CopyOutput"
+                class="io.cyberstrike.ide.jetbrains.actions.CopyOutputAction"
+                text="CyberStrike: Copy Output as Markdown"
+                description="Copy the whole CyberStrike panel output as a Markdown code block">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+
+        <action id="CyberStrike.HackBrowser"
+                class="io.cyberstrike.ide.jetbrains.actions.SlashCommandAction"
+                text="CyberStrike: Launch HackBrowser"
+                description="Run /hackbrowser in the CyberStrike panel">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+
+        <action id="CyberStrike.Report"
+                class="io.cyberstrike.ide.jetbrains.actions.SlashCommandAction"
+                text="CyberStrike: Generate Report"
+                description="Run /report in the CyberStrike panel">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+
+        <action id="CyberStrike.WebContext"
+                class="io.cyberstrike.ide.jetbrains.actions.SlashCommandAction"
+                text="CyberStrike: Attack Surface"
+                description="Run /web in the CyberStrike panel">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+
+        <action id="CyberStrike.StartServer"
+                class="io.cyberstrike.ide.jetbrains.actions.StartServerAction"
+                text="CyberStrike: Start Server"
+                description="Start cyberstrike serve and connect to it">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+
+        <group id="CyberStrike.EditorActions"
+               class="io.cyberstrike.ide.jetbrains.actions.CyberStrikeActionsGroup"
+               text="CyberStrike"
+               description="Ask CyberStrike about the selection"
+               popup="true">
+            <add-to-group group-id="EditorPopupMenu" anchor="after" relative-to-action="CyberStrike.AddLines"/>
+        </group>
+    </actions>
+</idea-plugin>
